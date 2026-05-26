@@ -14,8 +14,9 @@ build: []
 push: []
 
 pull:
-  - prefect.deployments.steps.set_working_directory:
-      directory: /opt/prefect/sales-inbound-spam-bot
+  - prefect.deployments.steps.git_clone:
+      repository: https://github.com/mthatt/sales-inbound-spam-bot.git
+      branch: main
 
 # Shared config — both deployments use the same secrets, variables, and deps.
 definitions:
@@ -42,7 +43,7 @@ deployments:
         pip_packages: *pip_packages
         env: *env_vars
     schedules:
-      - cron: "*/1 * * * *"
+      - cron: "*/5 * * * *"
         timezone: "UTC"
         active: true
 
