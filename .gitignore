@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+*.egg-info/
+build/
+dist/
+
+# Never commit credentials
+*.json
+!package.json
+service-account*.json
+*-service-account.json
+prefect-sbx-*.json

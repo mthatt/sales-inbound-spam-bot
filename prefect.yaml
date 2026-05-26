@@ -1,0 +1,61 @@
+# Prefect deployment config for the sales-inbound spam bot.
+#
+# Runs on a Prefect Managed work pool (my-managed-pool). No image build needed —
+# Prefect manages the runtime image and installs `pip_packages` at run time.
+#
+# Two deployments:
+#   - poll-spam-mentions:    every 1 minute (the polling loop)
+#   - weekly-spam-summary:   Mondays 09:00 ET (the digest)
+
+name: sales-inbound-spam-bot
+prefect-version: 3.0.0
+
+build: []
+push: []
+
+pull:
+  - prefect.deployments.steps.set_working_directory:
+      directory: /opt/prefect/sales-inbound-spam-bot
+
+# Shared config — both deployments use the same secrets, variables, and deps.
+definitions:
+  env_vars: &env_vars
+    SLACK_BOT_TOKEN: "{{ prefect.blocks.secret.slack-bot-token }}"
+    GOOGLE_SHEETS_CREDENTIALS_JSON: "{{ prefect.blocks.secret.google-sheets-credentials }}"
+    SALES_INBOUND_CHANNEL_ID: "{{ prefect.variables.sales_inbound_channel_id }}"
+    SPAM_REPORTS_CHANNEL_ID: "{{ prefect.variables.spam_reports_channel_id }}"
+    SPAM_FLAGS_SHEET_ID: "{{ prefect.variables.spam_flags_sheet_id }}"
+    SPAM_FLAGS_WORKSHEET_NAME: "{{ prefect.variables.spam_flags_worksheet_name }}"
+  pip_packages: &pip_packages
+    - slack_sdk>=3.27.0,<4
+    - gspread>=6.0.0,<7
+
+deployments:
+  - name: poll-spam-mentions
+    entrypoint: flows/poll_spam_mentions.py:poll_spam_mentions
+    description: |
+      Polls #sales-inbound every minute. Logs any new @-bot mention or :x: reaction
+      on a Salesforce lead notification as a spam flag against the assigned rep.
+    work_pool:
+      name: my-managed-pool
+      job_variables:
+        pip_packages: *pip_packages
+        env: *env_vars
+    schedules:
+      - cron: "*/1 * * * *"
+        timezone: "UTC"
+        active: true
+
+  - name: weekly-spam-summary
+    entrypoint: flows/weekly_spam_summary.py:weekly_spam_summary
+    description: |
+      Posts a per-rep spam digest for the prior Mon–Sun week to #spam-collection.
+    work_pool:
+      name: my-managed-pool
+      job_variables:
+        pip_packages: *pip_packages
+        env: *env_vars
+    schedules:
+      - cron: "0 9 * * 1"
+        timezone: "America/New_York"
+        active: true
