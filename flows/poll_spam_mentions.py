@@ -49,7 +49,9 @@ from lib.slack_client import (
 
 
 REACTION_EMOJI = "x"
-LOOKBACK_SECONDS = 24 * 3600
+# 7-day lookback: handles low-volume channels and recovers from polling gaps.
+# Dedup by `dedup_key` makes the re-scanning safe — already-processed flags are skipped.
+LOOKBACK_SECONDS = 7 * 24 * 3600
 EXCERPT_CHARS = 500
 
 
